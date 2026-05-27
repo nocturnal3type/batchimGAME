@@ -397,7 +397,8 @@ function handleMsg(data) {
         document.getElementById('wordNote').textContent = '맞춰 보세요!';
         updateHintBar(data.wordLen);
       }
-      startTimerLocal(data.timerSec || 60);
+      // 타이머는 방장만 startRoundHost에서 직접 시작
+      if (!isHost) startTimerLocal(data.timerSec || 60);
       addMsg(`🎮 라운드 ${round} 시작! 그리는 사람: ${players[drawerIdx]?.name}`, 'sys');
       break;
 
@@ -522,14 +523,25 @@ function startRoundHost(isSkip = false) {
     wordLen: [...word.kr].length,
     timerSec: 60,
   });
-
-  // 그리는 사람에게만 단어 전송
-  broadcast({
-    type: 'yourWord',
-    targetId: players[drawerIdx]?.id,
-    wordKr:   word.kr,
-    wordNote: word.note,
+  // 비방장 플레이어에게 roundStart 전달
+  // 방장도 직접 처리
+  handleMsg({
+    type: 'roundStart',
+    round, drawerIdx,
+    wordLen: [...word.kr].length,
+    timerSec: 60,
   });
+
+  // 그리는 사람에게 단어 전송
+  const drawerPlayer = players[drawerIdx];
+  if (drawerPlayer) {
+    if (drawerPlayer.id === myId) {
+      // 방장이 그리는 사람이면 직접 처리
+      handleMsg({ type:'yourWord', targetId: myId, wordKr: word.kr, wordNote: word.note });
+    } else {
+      broadcast({ type:'yourWord', targetId: drawerPlayer.id, wordKr: word.kr, wordNote: word.note });
+    }
+  }
 
   startTimerLocal(60);
 }
