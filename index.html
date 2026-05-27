@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>먼지맞춰봐 🎨</title>
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --ink:#1a1a2e; --paper:#faf7f0; --accent:#e63946;
+    --green:#2a9d8f; --blue:#457b9d; --warn:#f4a261;
+    --line:rgba(26,26,46,0.13); --bg:#ffffff;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:'Noto Sans KR',sans-serif;
+    background:var(--paper);
+    background-image:repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(180,200,220,0.17) 27px,rgba(180,200,220,0.17) 28px);
+    min-height:100vh; color:var(--ink);
+  }
+  header {
+    background:var(--ink); padding:11px 20px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:3px solid var(--accent);
+  }
+  .logo { font-family:'Gaegu',cursive; font-size:24px; font-weight:700; color:white; }
+  .logo em { color:var(--warn); font-style:normal; }
+  .room-badge { font-size:13px; color:rgba(255,255,255,0.7); background:rgba(255,255,255,0.1); border-radius:6px; padding:4px 10px; letter-spacing:0.05em; }
+  .room-badge span { color:white; font-weight:700; letter-spacing:0.12em; }
+
+  .layout { display:grid; grid-template-columns:200px 1fr; gap:14px; max-width:900px; margin:0 auto; padding:14px; align-items:start; }
+  .sidebar > * { margin-bottom:12px; }
+  .box { background:var(--bg); border:2px solid var(--ink); border-radius:12px; box-shadow:0 4px 0 var(--ink); overflow:hidden; }
+  .box-head { background:var(--ink); color:white; padding:8px 13px; font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+  .box-body { padding:13px; }
+
+  .word-card { background:var(--ink); border-radius:8px; padding:16px 10px; text-align:center; margin-bottom:11px; position:relative; overflow:hidden; }
+  .word-card::before { content:''; position:absolute; inset:0; background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(255,255,255,0.03) 6px,rgba(255,255,255,0.03) 12px); }
+  .word-main { font-family:'Gaegu',cursive; font-size:40px; font-weight:700; color:var(--warn); line-height:1; position:relative; }
+  .word-note { font-size:11px; color:rgba(255,255,255,0.38); margin-top:5px; position:relative; }
+
+  .timer-bg { background:var(--line); border-radius:4px; height:8px; border:1.5px solid var(--ink); overflow:hidden; }
+  .timer-fill { height:100%; background:var(--green); border-radius:2px; transition:width 1s linear,background .3s; }
+  .timer-fill.hot { background:var(--accent); }
+  .timer-label { font-size:12px; font-weight:700; text-align:right; margin-top:3px; }
+
+  .player-list { display:flex; flex-direction:column; gap:7px; }
+  .player { display:flex; align-items:center; gap:8px; border:1.5px solid var(--line); border-radius:8px; padding:8px 10px; transition:all .2s; }
+  .player.is-drawing { border-color:var(--accent); background:#fff4f4; }
+  .player.is-guessed { border-color:var(--green); background:#f0faf8; }
+  .player.is-me { border-style:dashed; }
+  .p-avatar { width:32px; height:32px; border-radius:7px; border:2px solid var(--ink); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .p-name { font-size:13px; font-weight:700; }
+  .p-score { font-size:11px; color:var(--blue); }
+  .p-badge { margin-left:auto; font-size:10px; padding:2px 6px; border-radius:999px; font-weight:700; }
+  .p-badge.drawing { background:var(--accent); color:white; }
+  .p-badge.guessed { background:var(--green); color:white; }
+
+  .btn { display:block; width:100%; padding:10px; border:2px solid var(--ink); border-radius:8px; font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:7px; box-shadow:0 3px 0 var(--ink); transition:all .15s; }
+  .btn:active { transform:translateY(3px); box-shadow:none; }
+  .btn-red { background:var(--accent); color:white; }
+  .btn-red:hover { background:#c62828; }
+  .btn-plain { background:var(--bg); color:var(--ink); }
+  .btn-plain:hover { background:var(--paper); }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:0 3px 0 var(--ink); }
+
+  .round-box { text-align:center; padding:9px; background:var(--paper); border-radius:8px; border:1.5px solid var(--line); margin-bottom:10px; }
+  .round-n { font-family:'Gaegu',cursive; font-size:28px; font-weight:700; line-height:1; }
+  .round-of { font-size:11px; color:rgba(26,26,46,.45); }
+
+  .canvas-wrap { background:var(--bg); border:2px solid var(--ink); border-radius:12px; box-shadow:0 4px 0 var(--ink); display:flex; flex-direction:column; overflow:hidden; height:calc(100vh - 46px); position:relative; }
+  .toolbar { background:var(--ink); padding:9px 13px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .sep { width:1px; height:22px; background:rgba(255,255,255,.2); }
+  .c-btn { width:21px; height:21px; border-radius:50%; border:2px solid rgba(255,255,255,.3); cursor:pointer; flex-shrink:0; transition:transform .1s,border-color .1s; }
+  .c-btn.on { border-color:white; transform:scale(1.25); box-shadow:0 0 0 2px rgba(255,255,255,.4); }
+  .s-btn { background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.25); border-radius:6px; padding:4px 8px; color:white; font-size:12px; font-weight:700; cursor:pointer; transition:background .1s; }
+  .s-btn.on,.s-btn:hover { background:rgba(255,255,255,.28); }
+  .t-btn { background:rgba(255,255,255,.1); border:1.5px solid rgba(255,255,255,.25); border-radius:6px; padding:5px 10px; color:white; font-size:12px; font-weight:700; cursor:pointer; transition:background .1s; }
+  .t-btn:hover { background:rgba(255,255,255,.2); }
+  .t-btn.eraser.on { background:rgba(255,200,100,.3); border-color:var(--warn); }
+  .toolbar-disabled { opacity:0.35; pointer-events:none; }
+  #hueSlider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:white; border:2px solid rgba(0,0,0,0.3); cursor:pointer; }
+  #hueSlider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:white; border:2px solid rgba(0,0,0,0.3); cursor:pointer; }
+  canvas { display:block; cursor:crosshair; touch-action:none; width:100%; flex:1; min-height:0; }
+  canvas.locked { cursor:not-allowed; }
+
+  .chat { height:140px; min-height:140px; max-height:140px; flex-shrink:0; overflow-y:auto; padding:9px 13px; display:flex; flex-direction:column; gap:5px; border-top:2px solid var(--ink); scroll-behavior:smooth; }
+  .chat::-webkit-scrollbar { width:4px; }
+  .chat::-webkit-scrollbar-thumb { background:var(--line); border-radius:2px; }
+  .m { font-size:13px; line-height:1.5; }
+  .m.sys { color:var(--blue); font-style:italic; font-size:12px; }
+  .m.ok  { color:var(--green); font-weight:700; }
+  .m.no  { color:var(--accent); }
+  .m.txt { color:var(--ink); }
+  .mname { font-weight:700; margin-right:4px; }
+
+  .hint-bar { display:flex; align-items:center; justify-content:center; gap:7px; padding:10px 14px; border-top:2px solid var(--ink); background:var(--paper); min-height:44px; flex-wrap:wrap; }
+  .hint-bar.empty { display:none; }
+  .hint-circle { width:28px; height:28px; border-radius:50%; border:2.5px solid var(--ink); background:white; display:flex; align-items:center; justify-content:center; font-family:'Gaegu',cursive; font-size:15px; font-weight:700; }
+  .hint-label { font-size:11px; color:rgba(26,26,46,.4); margin-left:4px; white-space:nowrap; }
+
+  .guess-row { border-top:2px solid var(--ink); display:flex; }
+  .guess-in { flex:1; border:none; padding:11px 13px; font-family:'Noto Sans KR',sans-serif; font-size:14px; background:transparent; outline:none; }
+  .guess-go { background:var(--accent); color:white; border:none; padding:11px 18px; font-family:'Gaegu',cursive; font-size:17px; font-weight:700; cursor:pointer; transition:background .15s; }
+  .guess-go:hover { background:#c62828; }
+  .guess-go:disabled { opacity:0.4; cursor:not-allowed; }
+
+  .overlay { position:fixed; inset:0; background:rgba(26,26,46,.72); display:flex; align-items:center; justify-content:center; z-index:100; backdrop-filter:blur(3px); }
+  .overlay.hide { display:none; }
+  .ov-card { background:var(--bg); border:3px solid var(--ink); border-radius:16px; padding:30px 28px; text-align:center; max-width:380px; width:90%; box-shadow:7px 7px 0 var(--ink); animation:pop .3s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop { from{transform:scale(.8);opacity:0} to{transform:scale(1);opacity:1} }
+  .ov-title { font-family:'Gaegu',cursive; font-size:34px; font-weight:700; margin-bottom:4px; }
+  .ov-word  { font-family:'Gaegu',cursive; font-size:50px; color:var(--accent); margin:6px 0; }
+  .ov-sub   { font-size:13px; color:rgba(26,26,46,.6); margin-bottom:18px; line-height:1.7; white-space:pre-line; }
+
+  .conf-wrap { position:fixed; inset:0; pointer-events:none; z-index:99; overflow:hidden; }
+  .conf { position:absolute; animation:fall linear forwards; }
+  @keyframes fall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(110vh) rotate(720deg);opacity:0} }
+
+
+  /* ── 단어 관리 ── */
+  .word-manager { margin-bottom:12px; }
+  .word-manager-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:7px; }
+  .word-manager-head .lbl { margin-bottom:0; }
+  .word-count { font-size:11px; color:rgba(26,26,46,.4); }
+  .word-tags { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; max-height:160px; overflow-y:auto; padding:8px; background:var(--paper); border:1.5px solid var(--line); border-radius:8px; }
+  .word-tags::-webkit-scrollbar { width:3px; }
+  .word-tags::-webkit-scrollbar-thumb { background:var(--line); border-radius:2px; }
+  .word-tag { display:flex; align-items:center; gap:4px; background:var(--bg); border:1.5px solid var(--ink); border-radius:999px; padding:3px 8px 3px 10px; font-size:12px; font-weight:700; white-space:nowrap; }
+  .word-tag button { background:none; border:none; cursor:pointer; color:rgba(26,26,46,.4); font-size:13px; line-height:1; padding:0; transition:color .1s; }
+  .word-tag button:hover { color:var(--accent); }
+  .word-add-row { display:flex; gap:6px; }
+  .word-add-in { flex:1; border:2px solid var(--line); border-radius:8px; padding:7px 10px; font-family:'Noto Sans KR',sans-serif; font-size:13px; outline:none; background:var(--paper); transition:border-color .15s; }
+  .word-add-in:focus { border-color:var(--ink); background:white; }
+  .word-add-btn { background:var(--ink); color:white; border:none; border-radius:8px; padding:7px 12px; font-family:'Gaegu',cursive; font-size:15px; cursor:pointer; transition:background .15s; }
+  .word-add-btn:hover { background:#333; }
+  .word-reset { font-size:11px; color:rgba(26,26,46,.4); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0; margin-top:4px; }
+  .word-reset:hover { color:var(--ink); }
+  .host-only { display:none; }
+
+  .turn-btn { flex:1; padding:7px 0; border:2px solid var(--line); border-radius:8px; background:var(--bg); font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .15s; color:var(--ink); }
+  .turn-btn:hover { border-color:var(--ink); }
+  .turn-btn.on { background:var(--ink); color:white; border-color:var(--ink); }
+
+
+  /* 로비 */
+  #screen-lobby { position:fixed; inset:0; z-index:200; background:var(--paper); background-image:repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(180,200,220,0.17) 27px,rgba(180,200,220,0.17) 28px); display:flex; align-items:flex-start; justify-content:center; padding:16px; overflow-y:auto; }
+  #screen-lobby.hide { display:none; }
+  .lobby-wrap { display:flex; gap:16px; max-width:700px; width:100%; flex-wrap:wrap; justify-content:center; padding-bottom:24px; }
+  .lobby-card { background:var(--bg); border:3px solid var(--ink); border-radius:16px; padding:28px 24px; flex:1; min-width:280px; max-width:320px; box-shadow:6px 6px 0 var(--ink); animation:pop .35s cubic-bezier(.34,1.56,.64,1); }
+  .lobby-title { font-family:'Gaegu',cursive; font-size:32px; font-weight:700; text-align:center; margin-bottom:4px; }
+  .lobby-title em { color:var(--warn); font-style:normal; }
+  .lobby-sub { text-align:center; font-size:12px; color:rgba(26,26,46,.5); margin-bottom:18px; }
+  .lobby-divider { text-align:center; font-size:11px; color:rgba(26,26,46,.35); margin:10px 0; }
+  .lbl { font-size:12px; font-weight:700; color:rgba(26,26,46,.6); margin-bottom:5px; }
+  .txt-in { width:100%; border:2px solid var(--line); border-radius:8px; padding:9px 12px; font-family:'Noto Sans KR',sans-serif; font-size:14px; outline:none; transition:border-color .15s; background:var(--paper); margin-bottom:10px; }
+  .txt-in:focus { border-color:var(--ink); background:white; }
+  .room-code-display { font-family:'Gaegu',cursive; font-size:36px; font-weight:700; letter-spacing:8px; text-align:center; color:var(--ink); background:var(--paper); border:2px dashed var(--line); border-radius:8px; padding:10px; margin-bottom:6px; cursor:pointer; transition:background .15s; }
+  .room-code-display:hover { background:#f0ece0; }
+  .copy-hint { font-size:11px; color:rgba(26,26,46,.4); text-align:center; margin-bottom:12px; }
+  .waiting-list { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; min-height:48px; }
+  .w-player { display:flex; align-items:center; gap:8px; border:1.5px solid var(--line); border-radius:8px; padding:7px 10px; font-size:13px; font-weight:700; }
+  .w-host-badge { font-size:10px; background:var(--accent); color:white; border-radius:999px; padding:1px 6px; margin-left:auto; }
+  .error-msg { font-size:12px; color:var(--accent); text-align:center; margin-top:-6px; margin-bottom:8px; min-height:18px; }
+
+
+  /* ── 아이패드 / 태블릿 (768px ~ 1024px) ── */
+  @media (min-width:651px) and (max-width:1024px) {
+    .layout { grid-template-columns: 180px 1fr; gap:10px; padding:10px; }
+    .canvas-wrap { height: calc(100vh - 46px); }
+    .box-body { padding:10px; }
+    .word-main { font-size:32px; }
+    .round-n { font-size:24px; }
+    .chat { height:120px; min-height:120px; max-height:120px; }
+    .guess-in { font-size:15px; padding:14px 12px; }
+    .guess-go { padding:14px 16px; font-size:18px; }
+    .hint-circle { width:32px; height:32px; }
+  }
+
+  /* ── 모바일 (650px 이하) ── */
+  @media (max-width:650px) {
+    .layout { grid-template-columns:1fr; }
+    .canvas-wrap { height:auto; }
+    canvas { flex:none !important; height:300px !important; }
+    .chat { height:110px; min-height:110px; max-height:110px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">먼지<em>맞춰봐</em> 🎨</div>
+  <div class="room-badge" id="headerRoom" style="display:none">방 코드: <span id="headerRoomCode"></span></div>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="box">
+      <div class="box-head">✏️ 이번 단어</div>
+      <div class="box-body">
+        <div class="word-card">
+          <div class="word-main" id="wordMain">?</div>
+          <div class="word-note" id="wordNote">게임을 기다리는 중...</div>
+        </div>
+        <div class="timer-bg"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
+        <div class="timer-label" id="timerLabel">60초</div>
+      </div>
+    </div>
+    <div class="box">
+      <div class="box-head">👥 플레이어</div>
+      <div class="box-body"><div class="player-list" id="playerList"></div></div>
+    </div>
+    <div class="box">
+      <div class="box-head">🎮 게임</div>
+      <div class="box-body">
+        <div class="round-box">
+          <div class="round-n" id="roundN">1</div>
+          <div class="round-of">/ <span id="totalR">5</span> 라운드</div>
+        </div>
+        <button class="btn btn-red"   id="startBtn"  onclick="hostAction('startGame')">▶ 게임 시작</button>
+        <button class="btn btn-plain" id="skipBtn"   onclick="drawerAction('skip')" disabled>🎲 다른 단어 뽑기</button>
+        <button class="btn btn-plain" id="forceSkipBtn" onclick="hostAction('forceSkip')" style="display:none">⏭ 이 턴 강제 스킵</button>
+        <button class="btn btn-plain" id="nextBtn"   onclick="hostAction('nextRound')" style="display:none">다음 라운드 →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-wrap">
+    <div class="toolbar" id="toolbar">
+      <!-- 현재 색상 + 팔레트 토글 -->
+      <div style="position:relative;">
+        <button id="colorPreviewBtn" onclick="togglePalette()"
+          style="width:26px;height:26px;border-radius:6px;border:2.5px solid white;
+          background:#1a1a2e;cursor:pointer;flex-shrink:0;transition:transform .1s;"
+          title="색상 선택"></button>
+        <!-- 팔레트 드롭다운 -->
+        <div id="colorPalette" style="display:none;position:absolute;top:34px;left:0;
+          background:#1a1a2e;border:2px solid rgba(255,255,255,0.2);border-radius:10px;
+          padding:8px;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+          <div id="paletteGrid" style="display:grid;grid-template-columns:repeat(8,22px);gap:4px;margin-bottom:7px;"></div>
+          <!-- 명도 슬라이더 -->
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:10px;color:rgba(255,255,255,0.5);">밝기</span>
+            <input type="range" id="lightnessSlider" min="15" max="85" value="45"
+              style="flex:1;height:5px;border-radius:3px;outline:none;cursor:pointer;
+              -webkit-appearance:none;appearance:none;border:none;background:linear-gradient(to right,#000,#fff);"
+              oninput="updateLightness(this.value)">
+          </div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <button class="s-btn on" onclick="setSize(4,this)">S</button>
+      <button class="s-btn"    onclick="setSize(11,this)">M</button>
+      <button class="s-btn"    onclick="setSize(24,this)">L</button>
+      <div class="sep"></div>
+      <button class="t-btn eraser" id="eraserBtn" onclick="toggleEraser()">지우개</button>
+      <button class="t-btn" onclick="undoStroke()">↩ 뒤로</button>
+      <button class="t-btn" onclick="doClean()">🗑 전체</button>
+    </div>
+    <canvas id="c"></canvas>
+    <div class="chat" id="chat"></div>
+    <div class="hint-bar empty" id="hintBar"></div>
+    <div class="guess-row">
+      <input class="guess-in" id="guessIn" placeholder="한국어로 정답을 입력하세요..." autocomplete="off">
+      <button class="guess-go" id="guessGo" onclick="submitGuess()">맞춰!</button>
+    </div>
+  </div>
+</div>
+
+<div class="conf-wrap" id="confWrap"></div>
+
+<div class="overlay hide" id="ovRound">
+  <div class="ov-card">
+    <div class="ov-title" id="ovRoundTitle"></div>
+    <div class="ov-word"  id="ovRoundWord"></div>
+    <div class="ov-sub"   id="ovRoundSub"></div>
+    <button class="btn btn-red" id="ovNextBtn" onclick="hostAction('nextRound')" style="margin-bottom:0;">다음 라운드 →</button>
+  </div>
+</div>
+
+<div class="overlay hide" id="ovEnd">
+  <div class="ov-card" style="max-width:400px;">
+    <div style="font-size:48px;margin-bottom:6px;">🏆</div>
+    <div class="ov-title">게임 종료!</div>
+    <div id="winnerName" style="font-family:'Gaegu',cursive;font-size:34px;color:var(--warn);margin:6px 0;"></div>
+    <div id="winnerMsg"  style="font-size:13px;color:rgba(26,26,46,.55);margin-bottom:12px;line-height:1.7;"></div>
+    <div id="finalScores" style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;text-align:left;width:100%;"></div>
+    <button class="btn btn-red" onclick="hostAction('resetGame')" style="margin-bottom:0;">🔄 다시 하기</button>
+  </div>
+</div>
+
+<!-- 로비 -->
+<div id="screen-lobby">
+  <div class="lobby-wrap">
+    <div class="lobby-card">
+      <div class="lobby-title">먼지<em>맞춰봐</em> 🎨</div>
+      <div class="lobby-sub">새 방을 만들거나, 코드로 입장하세요</div>
+      <div class="lbl">내 닉네임</div>
+      <input class="txt-in" id="nameCreate" placeholder="닉네임을 입력하세요" maxlength="10">
+      <button class="btn btn-red" onclick="createRoom()" style="margin-bottom:4px;">✚ 새 방 만들기</button>
+      <div class="error-msg" id="errCreate"></div>
+      <div class="lobby-divider">── 또는 ──</div>
+      <div class="lbl">방 코드로 입장</div>
+      <input class="txt-in" id="codeJoin" placeholder="6자리 코드 입력" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-weight:700;font-size:16px;">
+      <input class="txt-in" id="nameJoin" placeholder="닉네임을 입력하세요" maxlength="10">
+      <button class="btn btn-plain" onclick="joinRoom()">→ 입장하기</button>
+      <div class="error-msg" id="errJoin"></div>
+    </div>
+
+    <div class="lobby-card hide" id="waitingRoom" style="max-width:400px;">
+      <div class="lobby-title" style="font-size:24px;margin-bottom:2px;">대기실</div>
+      <div class="lobby-sub" style="margin-bottom:12px;">친구에게 코드를 알려주세요!</div>
+      <div class="room-code-display" id="roomCodeDisplay" onclick="copyCode()"></div>
+      <div class="copy-hint">클릭하면 코드가 복사돼요 📋</div>
+      <div class="lbl">참가자 (<span id="playerCount">0</span>명)</div>
+      <div class="waiting-list" id="waitingList"></div>
+
+      <!-- 턴 설정 (방장만 보임) -->
+      <div class="host-only" id="turnManager" style="margin-bottom:12px;">
+        <div class="lbl" style="margin-bottom:7px;">플레이어당 그리기 횟수</div>
+        <div style="display:flex;gap:6px;">
+          <button class="turn-btn on" onclick="setTurns(1,this)">1번</button>
+          <button class="turn-btn" onclick="setTurns(2,this)">2번</button>
+          <button class="turn-btn" onclick="setTurns(3,this)">3번</button>
+          <button class="turn-btn" onclick="setTurns(4,this)">4번</button>
+          <button class="turn-btn" onclick="setTurns(5,this)">5번</button>
+        </div>
+        <div style="font-size:11px;color:rgba(26,26,46,.4);margin-top:5px;" id="totalRoundsPreview">총 ? 라운드</div>
+      </div>
+
+      <!-- 단어 관리 (방장만 보임) -->
+      <div class="word-manager host-only" id="wordManager">
+        <div class="word-manager-head">
+          <div class="lbl">단어 목록 (<span id="wordCountBadge">0</span>개)</div>
+          <button class="word-reset" onclick="resetWords()">기본값으로 초기화</button>
+        </div>
+        <div class="word-tags" id="wordTagsWrap"></div>
+        <div class="word-add-row">
+          <input class="word-add-in" id="wordAddIn" placeholder="단어 추가..." maxlength="10">
+          <button class="word-add-btn" onclick="addWordTag()">+</button>
+        </div>
+      </div>
+
+      <button class="btn btn-red" id="hostStartBtn" onclick="hostAction('startGame')" disabled style="margin-top:10px;">▶ 게임 시작</button>
+      <div style="font-size:11px;color:rgba(26,26,46,.4);text-align:center;">2명 이상이어야 시작 가능</div>
+      <!-- 숨겨진 특별 모드 -->
+      <div style="text-align:right;margin-top:8px;">
+        <button onclick="loadSecretSet()" style="background:none;border:none;cursor:pointer;font-size:13px;color:rgba(26,26,46,0.35);padding:4px 6px;" title="특별 세트">✦ 특별 모드</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase 설정 ─────────────────────────────────────────
+const SUPABASE_URL = 'https://thkpumuajtwdtixietlh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_3GSnfFxaX_rsB1Dc8Wb3NQ_bYhO9jaW'
+
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── 상수 ──────────────────────────────────────────────────
+let WORDS = [
+  {kr:'밥',note:''},{kr:'떡',note:''},{kr:'밤',note:'🌰 먹는 밤'},
+  {kr:'배',note:''},{kr:'전',note:''},{kr:'곶감',note:''},
+  {kr:'닭고기',note:''},{kr:'사과',note:''},{kr:'생선',note:''},
+  {kr:'국수',note:''},{kr:'형',note:''},{kr:'동생',note:''},
+  {kr:'제비',note:''},{kr:'집',note:''},{kr:'둥지',note:''},
+  {kr:'지붕',note:''},{kr:'봄',note:''},{kr:'여름',note:''},
+  {kr:'가을',note:''},{kr:'겨울',note:''},{kr:'박',note:''},
+  {kr:'씨',note:''},{kr:'꽃',note:''},{kr:'그릇',note:''},
+  {kr:'책',note:''},{kr:'주걱',note:''},{kr:'이불',note:''},
+];
+
+const DEFAULT_WORDS = [
+  {kr:'밥',note:''},{kr:'떡',note:''},{kr:'밤',note:'🌰 먹는 밤'},
+  {kr:'배',note:''},{kr:'전',note:''},{kr:'곶감',note:''},
+  {kr:'닭고기',note:''},{kr:'사과',note:''},{kr:'생선',note:''},
+  {kr:'국수',note:''},{kr:'형',note:''},{kr:'동생',note:''},
+  {kr:'제비',note:''},{kr:'집',note:''},{kr:'둥지',note:''},
+  {kr:'지붕',note:''},{kr:'봄',note:''},{kr:'여름',note:''},
+  {kr:'가을',note:''},{kr:'겨울',note:''},{kr:'박',note:''},
+  {kr:'씨',note:''},{kr:'꽃',note:''},{kr:'그릇',note:''},
+  {kr:'책',note:''},{kr:'주걱',note:''},{kr:'이불',note:''},
+];
+const PEMOJI = ['🐶','🐱','🦊','🐼','🐸'];
+const PCOLOR = ['#e63946','#457b9d','#2a9d8f','#f4a261','#9b59b6'];
+
+// ── 상태 ──────────────────────────────────────────────────
+let myName = '';
+let turnsPerPlayer = 1;  // 플레이어당 그리기 횟수
+let myId   = Math.random().toString(36).slice(2);
+let roomCode = '';
+let isHost = false;
+let amDrawer = false;
+let gamePhase = 'lobby';
+let players = [];
+let currentWordKr = '';
+let timerInterval = null;
+let channel = null;
+let usedWordIdxs = [];
+let drawerIdx = 0;
+let round = 1;
+let timerSec = 100;
+
+// ── 방 코드 생성 ──────────────────────────────────────────
+function makeRoomCode() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6}, () => c[Math.floor(Math.random()*c.length)]).join('');
+}
+
+// ── Supabase Realtime 채널 연결 ───────────────────────────
+function connectChannel(code) {
+  roomCode = code.toUpperCase();
+  channel = sb.channel('room:' + roomCode, {
+    config: { broadcast: { self: false } }
+  });
+
+  channel
+    .on('broadcast', { event: 'game' }, ({ payload }) => handleMsg(payload))
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        document.getElementById('headerRoom').style.display = '';
+        document.getElementById('headerRoomCode').textContent = roomCode;
+        // ★ 자기 자신을 먼저 플레이어 목록에 추가 (self:false라 broadcast로 못 받으므로)
+        if (!players.find(p => p.id === myId)) {
+          players.push({ id: myId, name: myName, score: 0, guessed: false, isDrawer: false });
+        }
+        buildPlayers();
+        updateWaitingRoom();
+        // 다른 사람들에게 입장 알림
+        broadcast({ type: 'join', id: myId, name: myName });
+      }
+    });
+}
+
+function broadcast(payload) {
+  if (channel) channel.send({ type: 'broadcast', event: 'game', payload });
+}
+
+// ── 메시지 핸들러 ─────────────────────────────────────────
+function handleMsg(data) {
+  switch(data.type) {
+
+    case 'syncPlayers':
+      // 방장이 보낸 전체 플레이어 목록으로 동기화
+      players = data.players;
+      buildPlayers();
+      updateWaitingRoom();
+      break;
+
+    case 'turnsSync':
+      turnsPerPlayer = data.turnsPerPlayer;
+      break;
+
+    case 'wordSync':
+      WORDS = data.words;
+      break;
+
+    case 'join':
+      if (!players.find(p => p.id === data.id)) {
+        players.push({ id: data.id, name: data.name, score: 0, guessed: false, isDrawer: false });
+      }
+      buildPlayers();
+      updateWaitingRoom();
+      addMsg(`👋 ${data.name}님이 입장했어요!`, 'sys');
+      // ★ 방장이 현재 플레이어 목록을 전체 브로드캐스트 (새 참가자가 기존 멤버 볼 수 있게)
+      if (isHost) {
+        broadcast({ type: 'syncPlayers', players });
+      }
+      break;
+
+    case 'syncState':
+      players   = data.players;
+      round     = data.round;
+      gamePhase = data.gamePhase;
+      drawerIdx = data.drawerIdx;
+      amDrawer  = players[drawerIdx]?.id === myId;
+      document.getElementById('roundN').textContent = round;
+      updateTimer(data.timerSec);
+      buildPlayers();
+      updateHintBar(data.wordLen);
+      document.getElementById('screen-lobby').classList.add('hide');
+      lockCanvas(!amDrawer);
+      document.getElementById('guessIn').disabled  = amDrawer;
+      document.getElementById('guessGo').disabled  = amDrawer;
+      document.getElementById('skipBtn').disabled  = !amDrawer;
+      document.getElementById('startBtn').style.display = 'none';
+      break;
+
+    case 'startGame':
+      if (!isHost) {
+        players.forEach(p => { p.score=0; p.guessed=false; });
+        round = 1; drawerIdx = 0; usedWordIdxs = [];
+        if (data.turnsPerPlayer) turnsPerPlayer = data.turnsPerPlayer;
+      }
+      if (data.totalRounds) document.getElementById('totalR').textContent = data.totalRounds;
+      document.getElementById('screen-lobby').classList.add('hide');
+      document.getElementById('ovRound').classList.add('hide');
+      document.getElementById('ovEnd').classList.add('hide');
+      document.getElementById('startBtn').style.display = 'none';
+      gamePhase = 'playing';
+      if (isHost) startRoundHost();
+      break;
+
+    case 'roundStart':
+      round     = data.round;
+      drawerIdx = data.drawerIdx;
+      // ★ 방장이 보낸 players 배열로 동기화
+      if (data.players) players = data.players;
+      players.forEach(p => p.guessed = false);
+      players.forEach((p,i) => { p.isDrawer = i===drawerIdx; });
+      // ★ myId로 내 인덱스 찾아서 drawerIdx와 비교
+      const myIdx = players.findIndex(p => p.id === myId);
+      amDrawer = myIdx === drawerIdx;
+      gamePhase = 'playing';
+      document.getElementById('roundN').textContent = round;
+      document.getElementById('ovRound').classList.add('hide');
+      clearCanvasLocal();
+      buildPlayers();
+      lockCanvas(!amDrawer);
+      document.getElementById('guessIn').disabled = amDrawer;
+      document.getElementById('guessGo').disabled = amDrawer;
+      document.getElementById('skipBtn').disabled = !amDrawer;
+      document.getElementById('nextBtn').style.display = 'none';
+      document.getElementById('forceSkipBtn').style.display = 'none'; // 비방장에겐 항상 숨김
+      if (!amDrawer) {
+        document.getElementById('wordMain').textContent = '?';
+        document.getElementById('wordNote').textContent = '맞춰 보세요!';
+        updateHintBar(data.wordLen);
+      }
+      if (!isHost) startTimerLocal(data.timerSec || 60);
+      addMsg(`🎮 라운드 ${round} 시작! 그리는 사람: ${players[drawerIdx]?.name}`, 'sys');
+      break;
+
+    case 'yourWord':
+      if (data.targetId === myId) {
+        currentWordKr = data.wordKr;
+        document.getElementById('wordMain').textContent = data.wordKr;
+        document.getElementById('wordNote').textContent = data.wordNote || '그리는 사람만 봐요 👀';
+        updateHintBar();
+      }
+      break;
+
+    case 'chat':
+      addMsg(data.msg, data.kind || 'txt', data.name || '');
+      break;
+
+    case 'guess': {
+      const p = players.find(x => x.id === data.id);
+      if (!p) break;
+      if (isHost) {
+        if (data.text === currentWordKr) {
+          // ★ 정답: 텍스트 숨기고 "맞췄어요!"만 전체 공개
+          p.guessed = true;
+          const pts = Math.max(10, timerSec);
+          p.score += pts;
+          if (players[drawerIdx]) players[drawerIdx].score += 5;
+          broadcast({ type:'chat', msg:`🎉 ${p.name}이(가) 맞췄어요! +${pts}점`, kind:'ok' });
+          broadcast({ type:'correct' });
+          broadcast({ type:'playerUpdate', players });
+          addMsg(`🎉 ${p.name}이(가) 맞췄어요! +${pts}점`, 'ok');
+          confetti();
+          buildPlayers();
+          const guessers = players.filter((_,i)=>i!==drawerIdx);
+          if (guessers.every(x=>x.guessed)) endRoundHost();
+        } else {
+          // ★ 오답: 텍스트 전체 공개 (방장 본인 포함)
+          broadcast({ type:'chat', msg:data.text, kind:'txt', name:p.name });
+          addMsg(data.text, 'txt', p.name);
+        }
+      }
+      break;
+    }
+
+    case 'correct':
+      confetti();
+      break;
+
+    case 'playerUpdate':
+      players = data.players;
+      buildPlayers();
+      break;
+
+    case 'draw':
+      // self:false 이므로 항상 다른 사람이 보낸 것 — 무조건 그림
+      remoteDraw(data);
+      break;
+
+    case 'clearCanvas':
+      clearCanvasLocal();
+      strokeHistory = [];
+      break;
+
+    case 'redrawAll':
+      strokeHistory = data.strokes;
+      clearCanvasLocal();
+      strokeHistory.forEach(stroke => stroke.forEach(seg => paintLocal(seg.x1,seg.y1,seg.x2,seg.y2,seg.color,seg.size)));
+      break;
+
+    case 'nextRound':
+      // 비방장 플레이어: 오버레이 닫고 대기
+      document.getElementById('ovRound').classList.add('hide');
+      break;
+
+    case 'roundEnd':
+      clearInterval(timerInterval);
+      gamePhase = 'roundEnd';
+      document.getElementById('ovRoundTitle').textContent = data.timeout ? '⏰ 시간 초과!' : '✅ 라운드 종료!';
+      document.getElementById('ovRoundWord').textContent  = data.word;
+      document.getElementById('ovRoundSub').textContent   = isHost ? '' : '방장이 다음 라운드를 시작할 거예요.';
+      document.getElementById('ovNextBtn').style.display  = isHost ? '' : 'none';
+      document.getElementById('ovRound').classList.remove('hide');
+      document.getElementById('hintBar').className = 'hint-bar empty';
+      document.getElementById('forceSkipBtn').style.display = 'none';
+      break;
+
+    case 'gameEnd':
+      clearInterval(timerInterval);
+      gamePhase = 'gameEnd';
+      showGameEnd();
+      break;
+
+    case 'skip':
+      if (isHost) rerollWord();
+      break;
+
+    case 'reroll':
+      // 맞추는 사람: 힌트 바만 업데이트
+      if (!amDrawer) updateHintBar(data.wordLen);
+      break;
+
+    case 'resetGame':
+      players.forEach(p => { p.score=0; p.guessed=false; p.isDrawer=false; });
+      round=1; usedWordIdxs=[]; gamePhase='lobby';
+      clearCanvasLocal(); clearInterval(timerInterval);
+      document.getElementById('ovEnd').classList.add('hide');
+      document.getElementById('ovRound').classList.add('hide');
+      document.getElementById('wordMain').textContent = '?';
+      document.getElementById('wordNote').textContent = '게임을 기다리는 중...';
+      document.getElementById('timerFill').style.width='100%';
+      document.getElementById('timerLabel').textContent='60초';
+      document.getElementById('hintBar').className='hint-bar empty';
+      document.getElementById('startBtn').style.display='';
+      document.getElementById('screen-lobby').classList.remove('hide');
+      document.getElementById('waitingRoom').classList.remove('hide');
+      buildPlayers(); updateWaitingRoom();
+      break;
+  }
+}
+
+// ── 방장 전용 로직 ────────────────────────────────────────
+function pickWord() {
+  const pool = WORDS.map((_,i)=>i).filter(i=>!usedWordIdxs.includes(i));
+  if (!pool.length) usedWordIdxs = [];
+  const idx = (pool.length ? pool : WORDS.map((_,i)=>i))[Math.floor(Math.random()*(pool.length||WORDS.length))];
+  usedWordIdxs.push(idx);
+  return WORDS[idx];
+}
+
+function startRoundHost(isSkip = false) {
+  if (!isSkip) {
+    if (round > 1) drawerIdx = (drawerIdx + 1) % players.length;
+  }
+  players.forEach((p,i) => { p.isDrawer = i===drawerIdx; p.guessed=false; });
+  const word = pickWord();
+  currentWordKr = word.kr;
+  timerSec = 100;
+
+  // 비방장 참가자들에게 roundStart 전송
+  broadcast({
+    type: 'roundStart',
+    round, drawerIdx,
+    players,   // ★ players 배열도 같이 전송해서 참가자가 자기 인덱스 찾을 수 있게
+    wordLen: [...word.kr].length,
+    timerSec: 100,
+  });
+
+  // 방장은 직접 UI 업데이트 (handleMsg 호출 X — amDrawer 꼬임 방지)
+  amDrawer = players[drawerIdx]?.id === myId;
+  document.getElementById('roundN').textContent = round;
+  document.getElementById('ovRound').classList.add('hide');
+  clearCanvasLocal();
+  buildPlayers();
+  lockCanvas(!amDrawer);
+  document.getElementById('guessIn').disabled = amDrawer;
+  document.getElementById('guessGo').disabled = amDrawer;
+  document.getElementById('skipBtn').disabled = !amDrawer;
+  document.getElementById('nextBtn').style.display = 'none';
+  // ★ 방장에게만 강제 스킵 버튼 표시
+  document.getElementById('forceSkipBtn').style.display = isHost ? '' : 'none';
+  gamePhase = 'playing';
+  if (!amDrawer) {
+    document.getElementById('wordMain').textContent = '?';
+    document.getElementById('wordNote').textContent = '맞춰 보세요!';
+    updateHintBar([...word.kr].length);
+  }
+  addMsg(`🎮 라운드 ${round} 시작! 그리는 사람: ${players[drawerIdx]?.name}`, 'sys');
+
+  // 단어 전송
+  const drawerPlayer = players[drawerIdx];
+  if (drawerPlayer) {
+    if (drawerPlayer.id === myId) {
+      // 방장이 그리는 사람
+      currentWordKr = word.kr;
+      document.getElementById('wordMain').textContent = word.kr;
+      document.getElementById('wordNote').textContent = word.note || '그리는 사람만 봐요 👀';
+      updateHintBar();
+    } else {
+      // 다른 사람이 그리는 사람
+      broadcast({ type:'yourWord', targetId: drawerPlayer.id, wordKr: word.kr, wordNote: word.note });
+    }
+  }
+
+  startTimerLocal(100);
+}
+
+
+function rerollWord() {
+  // 단어만 새로 뽑기 — 드로워/라운드/타이머 유지
+  const word = pickWord();
+  currentWordKr = word.kr;
+
+  // 그리는 사람에게 새 단어 전송
+  const drawerPlayer = players[drawerIdx];
+  if (drawerPlayer) {
+    if (drawerPlayer.id === myId) {
+      document.getElementById('wordMain').textContent = word.kr;
+      document.getElementById('wordNote').textContent = word.note || '그리는 사람만 봐요 👀';
+      updateHintBar();
+    } else {
+      broadcast({ type:'yourWord', targetId: drawerPlayer.id, wordKr: word.kr, wordNote: word.note });
+    }
+  }
+
+  // 맞추는 사람들에게 새 글자 수 힌트 전송
+  broadcast({ type:'reroll', wordLen: [...word.kr].length });
+
+  // 캔버스 지우기
+  clearCanvasLocal();
+  broadcast({ type:'clearCanvas' });
+  addMsg('🎲 단어가 바뀌었어요!', 'sys');
+  broadcast({ type:'chat', msg:'🎲 단어가 바뀌었어요!', kind:'sys' });
+}
+
+function endRoundHost(timeout = false) {
+  clearInterval(timerInterval);
+  broadcast({ type: 'roundEnd', word: currentWordKr, timeout });
+  // ★ 방장도 직접 라운드 종료 처리
+  handleMsg({ type: 'roundEnd', word: currentWordKr, timeout });
+}
+
+function startTimerLocal(sec) {
+  timerSec = sec;
+  clearInterval(timerInterval);
+  updateTimer(timerSec);
+  timerInterval = setInterval(() => {
+    timerSec--;
+    updateTimer(timerSec);
+    if (isHost && timerSec === 30) broadcast({ type:'chat', msg:'⏰ 30초 남았어요!', kind:'sys' });
+    if (timerSec <= 0) {
+      clearInterval(timerInterval);
+      if (isHost) endRoundHost(true);
+    }
+  }, 1000);
+}
+
+function updateTimer(sec) {
+  const pct = (sec/100)*100;
+  document.getElementById('timerFill').style.width = pct+'%';
+  document.getElementById('timerFill').classList.toggle('hot', sec<=20);
+  document.getElementById('timerLabel').textContent = sec+'초';
+}
+
+// ── 버튼 액션 ─────────────────────────────────────────────
+function hostAction(type) {
+  if (!isHost) return;
+  if (type === 'startGame') {
+    players.forEach(p => { p.score=0; p.guessed=false; });
+    round=1; drawerIdx=0; usedWordIdxs=[];
+    broadcast({ type:'startGame', turnsPerPlayer, totalRounds: players.length * turnsPerPlayer });
+    document.getElementById('totalR').textContent = players.length * turnsPerPlayer;
+    // ★ 방장은 자신도 직접 처리 (self:false 이므로)
+    handleMsg({ type:'startGame' });
+  } else if (type === 'forceSkip') {
+    endRoundHost(true);
+  } else if (type === 'nextRound') {
+    document.getElementById('ovRound').classList.add('hide');
+    const totalRounds = players.length * turnsPerPlayer;
+    document.getElementById('totalR').textContent = totalRounds;
+    if (round >= totalRounds) {
+      broadcast({ type:'gameEnd' });
+      handleMsg({ type:'gameEnd' });
+    } else {
+      round++;
+      broadcast({ type:'nextRound' });
+      handleMsg({ type:'nextRound' });
+      startRoundHost();
+    }
+  } else if (type === 'resetGame') {
+    broadcast({ type:'resetGame' });
+    handleMsg({ type:'resetGame' });
+  }
+}
+
+function drawerAction(type) {
+  if (!amDrawer) return;
+  if (type === 'skip') broadcast({ type:'skip' });
+}
+
+// ── 로비 ─────────────────────────────────────────────────
+function createRoom() {
+  const name = document.getElementById('nameCreate').value.trim();
+  if (!name) { showError('errCreate','닉네임을 입력해 주세요!'); return; }
+  myName = name; isHost = true;
+  const code = makeRoomCode();
+  document.getElementById('roomCodeDisplay').textContent = code;
+  document.getElementById('waitingRoom').classList.remove('hide');
+  // ★ 방장 전용 UI 표시
+  document.getElementById('wordManager').style.display = 'block';
+  document.getElementById('turnManager').style.display = 'block';
+  buildWordTags();
+  updateTotalRoundsPreview();
+  connectChannel(code);
+}
+
+function joinRoom() {
+  const code = document.getElementById('codeJoin').value.trim().toUpperCase();
+  const name = document.getElementById('nameJoin').value.trim();
+  if (!code || code.length!==6) { showError('errJoin','6자리 코드를 입력해 주세요!'); return; }
+  if (!name) { showError('errJoin','닉네임을 입력해 주세요!'); return; }
+  myName = name; isHost = false;
+  document.getElementById('roomCodeDisplay').textContent = code;
+  document.getElementById('waitingRoom').classList.remove('hide');
+  connectChannel(code);
+}
+
+function updateWaitingRoom() {
+  const list = document.getElementById('waitingList');
+  list.innerHTML = '';
+  players.forEach((p,i) => {
+    const div = document.createElement('div');
+    div.className = 'w-player';
+    div.innerHTML = `<span>${PEMOJI[i%5]}</span><span>${p.name}</span>${i===0?'<span class="w-host-badge">방장</span>':''}`;
+    list.appendChild(div);
+  });
+  document.getElementById('playerCount').textContent = players.length;
+  document.getElementById('hostStartBtn').disabled = players.length < 2;
+  if (isHost) updateTotalRoundsPreview();
+}
+
+function copyCode() {
+  const code = document.getElementById('roomCodeDisplay').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const el = document.getElementById('roomCodeDisplay');
+    const orig = el.textContent;
+    el.textContent = '복사됨!';
+    setTimeout(()=>el.textContent=orig, 1200);
+  });
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent=msg; setTimeout(()=>el.textContent='',3000); }
+}
+
+
+
+// ── 턴 설정 ──────────────────────────────────────────────
+function setTurns(n, btn) {
+  turnsPerPlayer = n;
+  document.querySelectorAll('.turn-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  updateTotalRoundsPreview();
+  broadcast({ type: 'turnsSync', turnsPerPlayer: n });
+}
+
+function loadSecretSet() {
+  WORDS = [
+    {kr:'Confess-47',note:''},
+    {kr:'야토',note:''},
+    {kr:'팽',note:''},
+    {kr:'바닐라',note:''},
+    {kr:'플룸',note:''},
+    {kr:'스캐빈저',note:''},
+    {kr:'쿠리어',note:''},
+    {kr:'비그나',note:''},
+    {kr:'머틀',note:''},
+    {kr:'빈스토크',note:''},
+    {kr:'텍사스',note:''},
+    {kr:'지마',note:''},
+    {kr:'그라니',note:''},
+    {kr:'리드',note:''},
+    {kr:'엘리시움',note:''},
+    {kr:'키아베',note:''},
+    {kr:'와일드메인',note:''},
+    {kr:'블랙나이트',note:''},
+    {kr:'칸타빌레',note:''},
+    {kr:'퍼즐',note:''},
+    {kr:'폰사이러스',note:''},
+    {kr:'완칭',note:''},
+    {kr:'케스트럴',note:''},
+    {kr:'팽 더 파이어 샤픈드',note:''},
+    {kr:'마이틈',note:''},
+    {kr:'칠책',note:''},
+    {kr:'서퍼',note:''},
+    {kr:'마츠키리',note:''},
+    {kr:'시즈',note:''},
+    {kr:'백파이프',note:''},
+    {kr:'사가',note:''},
+    {kr:'사일라흐',note:''},
+    {kr:'플레임테일',note:''},
+    {kr:'비질',note:''},
+    {kr:'이네스',note:''},
+    {kr:'뮤엘시스',note:''},
+    {kr:'불피스폴리아',note:''},
+    {kr:'CASTLE-3',note:''},
+    {kr:'멜란사',note:''},
+    {kr:'미드나이트',note:''},
+    {kr:'포푸카',note:''},
+    {kr:'도베르만',note:''},
+    {kr:'에스텔',note:''},
+    {kr:'비헌터',note:''},
+    {kr:'무스',note:''},
+    {kr:'프로스트리프',note:''},
+    {kr:'마토이마루',note:''},
+    {kr:'우타게',note:''},
+    {kr:'컨빅션',note:''},
+    {kr:'커터',note:''},
+    {kr:'아렌',note:''},
+    {kr:'재키',note:''},
+    {kr:'나소흑',note:''},
+    {kr:'쿼츠',note:''},
+    {kr:'휴머스',note:''},
+    {kr:'윈드스쿳',note:''},
+    {kr:'프란카',note:''},
+    {kr:'스펙터',note:''},
+    {kr:'인드라',note:''},
+    {kr:'라플란드',note:''},
+    {kr:'새비지',note:''},
+    {kr:'스와이어',note:''},
+    {kr:'아스테시아',note:''},
+    {kr:'플레임브링어',note:''},
+    {kr:'브로카',note:''},
+    {kr:'바이비크',note:''},
+    {kr:'시데로카',note:''},
+    {kr:'에이어스카르페',note:''},
+    {kr:'플린트',note:''},
+    {kr:'위슬래시',note:''},
+    {kr:'Tachanka',note:''},
+    {kr:'아카후유',note:''},
+    {kr:'테킬라',note:''},
+    {kr:'라 플루마',note:''},
+    {kr:'하이모어',note:''},
+    {kr:'다그다',note:''},
+    {kr:'윈드차임스',note:''},
+    {kr:'레우스 S 느와르 코르네',note:''},
+    {kr:'모건',note:''},
+    {kr:'브라이오피타',note:''},
+    {kr:'레토',note:''},
+    {kr:'Fuze',note:''},
+    {kr:'Doc',note:''},
+    {kr:'오다',note:''},
+    {kr:'라이오스',note:''},
+    {kr:'그레이스베어러',note:''},
+    {kr:'유텐지 냐무',note:''},
+    {kr:'실버애쉬',note:''},
+    {kr:'스카디',note:''},
+    {kr:'첸',note:''},
+    {kr:'헬라그',note:''},
+    {kr:'블레이즈',note:''},
+    {kr:'쏜즈',note:''},
+    {kr:'수르트',note:''},
+    {kr:'마운틴',note:''},
+    {kr:'팔라스',note:''},
+    {kr:'니어 더 래디언트 나이트',note:''},
+    {kr:'아이린',note:''},
+    {kr:'가비알 디 인빈서블',note:''},
+    {kr:'무에나',note:''},
+    {kr:'총웨',note:''},
+    {kr:'치우바이',note:''},
+    {kr:'이그제큐터 디 엑스 포에데레',note:''},
+    {kr:'외드레르',note:''},
+    {kr:'레싱',note:''},
+    {kr:'비비아나',note:''},
+    {kr:'데겐블레허',note:''},
+    {kr:'좌락',note:''},
+    {kr:'울피아누스',note:''},
+    {kr:'페페',note:''},
+    {kr:'비나 빅토리아',note:''},
+    {kr:'엔텔레키아',note:''},
+    {kr:'레이즈 더 썬더브링어',note:''},
+    {kr:'토가와 사키코',note:''},
+    {kr:'FRISTON-3',note:''},
+    {kr:'느와르 코르네',note:''},
+    {kr:'비글',note:''},
+    {kr:'카디건',note:''},
+    {kr:'스팟',note:''},
+    {kr:'쿠오라',note:''},
+    {kr:'굼',note:''},
+    {kr:'마터호른',note:''},
+    {kr:'듀나',note:''},
+    {kr:'버블',note:''},
+    {kr:'루토나다',note:''},
+    {kr:'니어',note:''},
+    {kr:'리스캄',note:''},
+    {kr:'벌컨',note:''},
+    {kr:'크루아상',note:''},
+    {kr:'바이슨',note:''},
+    {kr:'훔',note:''},
+    {kr:'아스베스토스',note:''},
+    {kr:'Blitz',note:''},
+    {kr:'헤비레인',note:''},
+    {kr:'애쉬락',note:''},
+    {kr:'오로라',note:''},
+    {kr:'샬렘',note:''},
+    {kr:'체르니',note:''},
+    {kr:'파이어휘슬',note:''},
+    {kr:'시멘트',note:''},
+    {kr:'베이스라인',note:''},
+    {kr:'언더플로우',note:''},
+    {kr:'센시',note:''},
+    {kr:'필라에',note:''},
+    {kr:'호시구마',note:''},
+    {kr:'사리아',note:''},
+    {kr:'니엔',note:''},
+    {kr:'유넥티스',note:''},
+    {kr:'블레미샤인',note:''},
+    {kr:'머드락',note:''},
+    {kr:'혼',note:''},
+    {kr:'페넌스',note:''},
+    {kr:'제시카 더 리버레이티드',note:''},
+    {kr:'슈',note:''},
+    {kr:'위',note:''},
+    {kr:'산크타 믹사파라토',note:''},
+    {kr:'호시구마 더 브리처',note:''},
+    {kr:'저스티스 나이트',note:''},
+    {kr:'크루스',note:''},
+    {kr:'아드나키엘',note:''},
+    {kr:'캐터펄트',note:''},
+    {kr:'메이',note:''},
+    {kr:'메테오',note:''},
+    {kr:'시라유키',note:''},
+    {kr:'제시카',note:''},
+    {kr:'버메일',note:''},
+    {kr:'엠브리엘',note:''},
+    {kr:'애시드드롭',note:''},
+    {kr:'파인콘',note:''},
+    {kr:'토터',note:''},
+    {kr:'케이퍼',note:''},
+    {kr:'메테오라이트',note:''},
+    {kr:'블루포이즌',note:''},
+    {kr:'파이어워치',note:''},
+    {kr:'프로방스',note:''},
+    {kr:'플래티넘',note:''},
+    {kr:'이그제큐터',note:''},
+    {kr:'그레이스롯',note:''},
+    {kr:'세사',note:''},
+    {kr:'안드레아나',note:''},
+    {kr:'에이프릴',note:''},
+    {kr:'아오스타',note:''},
+    {kr:'토디폰스',note:''},
+    {kr:'크루스 더 킨 글린트',note:''},
+    {kr:'에라토',note:''},
+    {kr:'그레이 더 라이트닝베어러',note:''},
+    {kr:'루나컵',note:''},
+    {kr:'지에윈',note:''},
+    {kr:'멜라나이트',note:''},
+    {kr:'인사이더',note:''},
+    {kr:'콜드샷',note:''},
+    {kr:'브리기드',note:''},
+    {kr:'키치세이',note:''},
+    {kr:'엑시아',note:''},
+    {kr:'슈바르츠',note:''},
+    {kr:'W',note:''},
+    {kr:'로사',note:''},
+    {kr:'로즈몬티스',note:''},
+    {kr:'아르케토',note:''},
+    {kr:'Ash',note:''},
+    {kr:'첸 더 홀룽데이',note:''},
+    {kr:'파투스',note:''},
+    {kr:'피아메타',note:''},
+    {kr:'파죰카',note:''},
+    {kr:'티폰',note:''},
+    {kr:'레이',note:''},
+    {kr:'위셔델',note:''},
+    {kr:'나란투야',note:''},
+    {kr:'르무엔',note:''},
+    {kr:'두린',note:''},
+    {kr:'12F',note:''},
+    {kr:'스튜어드',note:''},
+    {kr:'라바',note:''},
+    {kr:'헤이즈',note:''},
+    {kr:'기타노',note:''},
+    {kr:'그레이',note:''},
+    {kr:'클릭',note:''},
+    {kr:'인디고',note:''},
+    {kr:'푸딩',note:''},
+    {kr:'아미야',note:''},
+    {kr:'나이트메어',note:''},
+    {kr:'스카이파이어',note:''},
+    {kr:'레이즈',note:''},
+    {kr:'압생트',note:''},
+    {kr:'레온하르트',note:''},
+    {kr:'비즈왁스',note:''},
+    {kr:'토미미',note:''},
+    {kr:'민트',note:''},
+    {kr:'아이리스',note:''},
+    {kr:'라바 더 퍼거토리',note:''},
+    {kr:'코로세럼',note:''},
+    {kr:'쉐라',note:''},
+    {kr:'락락',note:''},
+    {kr:'아스트젠',note:''},
+    {kr:'미니멀리스트',note:''},
+    {kr:'카니팔라트',note:''},
+    {kr:'아르모니',note:''},
+    {kr:'산탈라',note:''},
+    {kr:'델핀',note:''},
+    {kr:'디아만테',note:''},
+    {kr:'워미',note:''},
+    {kr:'아로마',note:''},
+    {kr:'테크노',note:''},
+    {kr:'이프리트',note:''},
+    {kr:'에이야퍄들라',note:''},
+    {kr:'모스티마',note:''},
+    {kr:'케오베',note:''},
+    {kr:'시',note:''},
+    {kr:'패신저',note:''},
+    {kr:'카넬리안',note:''},
+    {kr:'골든글로우',note:''},
+    {kr:'에벤홀츠',note:''},
+    {kr:'린',note:''},
+    {kr:'오올헤약',note:''},
+    {kr:'로고스',note:''},
+    {kr:'님프',note:''},
+    {kr:'마르실',note:''},
+    {kr:'라플란드 더 데카덴차',note:''},
+    {kr:'블레이즈 디 이그나이팅 스파크',note:''},
+    {kr:'네크라스',note:''},
+    {kr:'히비스커스',note:''},
+    {kr:'안셀',note:''},
+    {kr:'미르',note:''},
+    {kr:'가비알',note:''},
+    {kr:'퍼퓨머',note:''},
+    {kr:'수수로',note:''},
+    {kr:'퓨어스트림',note:''},
+    {kr:'체스트넛',note:''},
+    {kr:'프틸롭시스',note:''},
+    {kr:'사일런스',note:''},
+    {kr:'와파린',note:''},
+    {kr:'실론',note:''},
+    {kr:'브리즈',note:''},
+    {kr:'폴리닉',note:''},
+    {kr:'위스퍼레인',note:''},
+    {kr:'투예',note:''},
+    {kr:'멀베리',note:''},
+    {kr:'허니베리',note:''},
+    {kr:'히비스커스 더 퓨리파이어',note:''},
+    {kr:'파프리카',note:''},
+    {kr:'벤델라',note:''},
+    {kr:'해럴드',note:''},
+    {kr:'파피루스',note:''},
+    {kr:'로즈솔트',note:''},
+    {kr:'노웰',note:''},
+    {kr:'녹무관',note:''},
+    {kr:'샤이닝',note:''},
+    {kr:'나이팅게일',note:''},
+    {kr:'켈시',note:''},
+    {kr:'루멘',note:''},
+    {kr:'리드 더 플레임 섀도우',note:''},
+    {kr:'에이야퍄들라 더 크비트 아스카',note:''},
+    {kr:'Mon3tr',note:''},
+    {kr:'오키드',note:''},
+    {kr:'딥컬러',note:''},
+    {kr:'어스스피릿',note:''},
+    {kr:'포덴코',note:''},
+    {kr:'로베르타',note:''},
+    {kr:'프라마닉스',note:''},
+    {kr:'메이어',note:''},
+    {kr:'소라',note:''},
+    {kr:'이스티나',note:''},
+    {kr:'글라우쿠스',note:''},
+    {kr:'샤마르',note:''},
+    {kr:'츠키노기',note:''},
+    {kr:'씬',note:''},
+    {kr:'퀘르쿠스',note:''},
+    {kr:'하이디',note:''},
+    {kr:'윈드플릿',note:''},
+    {kr:'프로바이조',note:''},
+    {kr:'발라크빈',note:''},
+    {kr:'그레인버즈',note:''},
+    {kr:'루실라',note:''},
+    {kr:'샌드레코너',note:''},
+    {kr:'캐서린',note:''},
+    {kr:'보빙',note:''},
+    {kr:'싱주',note:''},
+    {kr:'알라나',note:''},
+    {kr:'안젤리나',note:''},
+    {kr:'마젤란',note:''},
+    {kr:'스즈란',note:''},
+    {kr:'스카디 더 커럽팅 하트',note:''},
+    {kr:'노시스',note:''},
+    {kr:'링',note:''},
+    {kr:'스테인리스',note:''},
+    {kr:'사일런스 더 패러디그매틱',note:''},
+    {kr:'비르투오사',note:''},
+    {kr:'시빌라이트 에테르나',note:''},
+    {kr:'트라고디아',note:''},
+    {kr:'라이디언',note:''},
+    {kr:'하루카',note:''},
+    {kr:'THRM-EX',note:''},
+    {kr:'그라벨',note:''},
+    {kr:'로프',note:''},
+    {kr:'쇼',note:''},
+    {kr:'에단',note:''},
+    {kr:'제이',note:''},
+    {kr:'버던트',note:''},
+    {kr:'콘트레일',note:''},
+    {kr:'레드',note:''},
+    {kr:'맨티코어',note:''},
+    {kr:'클리프하트',note:''},
+    {kr:'에프이터',note:''},
+    {kr:'와이후',note:''},
+    {kr:'스노우상트',note:''},
+    {kr:'카프카',note:''},
+    {kr:'로빈',note:''},
+    {kr:'우요우',note:''},
+    {kr:'Frost',note:''},
+    {kr:'베나',note:''},
+    {kr:'키라라',note:''},
+    {kr:'인포서',note:''},
+    {kr:'카제마루',note:''},
+    {kr:'스푸리아',note:''},
+    {kr:'아몬드',note:''},
+    {kr:'Iana',note:''},
+    {kr:'피구리노',note:''},
+    {kr:'아',note:''},
+    {kr:'팬텀',note:''},
+    {kr:'위디',note:''},
+    {kr:'글래디아',note:''},
+    {kr:'미즈키',note:''},
+    {kr:'리',note:''},
+    {kr:'스펙터 디 언체인드',note:''},
+    {kr:'도로시',note:''},
+    {kr:'텍사스 디 오메르토사',note:''},
+    {kr:'키린 R 야토',note:''},
+    {kr:'스와이어 디 엘리건트 위트',note:''},
+    {kr:'아스카론',note:''},
+    {kr:'틴맨',note:''},
+    {kr:'크라운슬레이어',note:''},
+    {kr:'쏜즈 더 로드스타',note:''},
+    {kr:'엑시아 더 뉴 커버넌트',note:''},
+  ];
+  buildWordTags();
+  broadcast({ type:'wordSync', words: WORDS });
+  addMsg('✦ 특별 세트 적용됨', 'sys');
+}
+
+function updateTotalRoundsPreview() {
+  const total = players.length * turnsPerPlayer;
+  const el = document.getElementById('totalRoundsPreview');
+  if (el) el.textContent = `총 ${total || '?'} 라운드 (플레이어 ${players.length}명 × ${turnsPerPlayer}번)`;
+}
+
+// ── 단어 관리 ─────────────────────────────────────────────
+function buildWordTags() {
+  const wrap = document.getElementById('wordTagsWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  WORDS.forEach((w, i) => {
+    const tag = document.createElement('div');
+    tag.className = 'word-tag';
+    tag.innerHTML = `<span>${w.kr}</span><button onclick="removeWord(${i})" title="삭제">×</button>`;
+    wrap.appendChild(tag);
+  });
+  const badge = document.getElementById('wordCountBadge');
+  if (badge) badge.textContent = WORDS.length;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const addIn = document.getElementById('wordAddIn');
+  if (addIn) addIn.addEventListener('keydown', e => { if(e.key==='Enter' && !e.isComposing) addWordTag(); });
+});
+
+function addWordTag() {
+  const inp = document.getElementById('wordAddIn');
+  const val = inp.value.trim();
+  if (!val) return;
+  if (WORDS.find(w => w.kr === val)) {
+    inp.value = '';
+    return;
+  }
+  WORDS.push({ kr: val, note: '' });
+  inp.value = '';
+  buildWordTags();
+  // 방장이 단어 목록을 참가자들에게 동기화
+  broadcast({ type: 'wordSync', words: WORDS });
+}
+
+function removeWord(idx) {
+  if (WORDS.length <= 1) return;
+  WORDS.splice(idx, 1);
+  buildWordTags();
+  broadcast({ type: 'wordSync', words: WORDS });
+}
+
+function resetWords() {
+  WORDS = DEFAULT_WORDS.map(w => ({...w}));
+  buildWordTags();
+  broadcast({ type: 'wordSync', words: WORDS });
+}
+
+// ── 플레이어 목록 ─────────────────────────────────────────
+function buildPlayers() {
+  const list = document.getElementById('playerList');
+  list.innerHTML = '';
+  players.forEach((p,i) => {
+    const isMe = p.id === myId;
+    const div = document.createElement('div');
+    div.className='player'+(p.isDrawer?' is-drawing':'')+(p.guessed?' is-guessed':'')+(isMe?' is-me':'');
+    div.innerHTML=`
+      <div class="p-avatar" style="background:${PCOLOR[i%5]}22;border-color:${PCOLOR[i%5]}">${PEMOJI[i%5]}</div>
+      <div><div class="p-name">${p.name}${isMe?' (나)':''}</div><div class="p-score">${p.score}점</div></div>
+      ${p.isDrawer?'<span class="p-badge drawing">그리는 중</span>':p.guessed?'<span class="p-badge guessed">정답!</span>':''}
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ── 힌트 바 ──────────────────────────────────────────────
+function updateHintBar(len) {
+  const bar = document.getElementById('hintBar');
+  const n = len || (amDrawer && currentWordKr ? [...currentWordKr].length : 0);
+  if (!n || gamePhase!=='playing') { bar.className='hint-bar empty'; return; }
+  bar.className='hint-bar';
+  bar.innerHTML=Array(n).fill('<div class="hint-circle"></div>').join('')+`<span class="hint-label">${n}글자</span>`;
+}
+
+// ── 채팅 ─────────────────────────────────────────────────
+function addMsg(text, kind='txt', name='') {
+  const area=document.getElementById('chat');
+  const div=document.createElement('div');
+  div.className='m '+kind;
+  div.innerHTML=name?`<span class="mname">${name}</span>${text}`:text;
+  area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+}
+
+document.getElementById('guessIn').addEventListener('keydown', e=>{
+  // ★ 한글 IME 조합 중일 때 엔터 무시 (마지막 글자 중복 방지)
+  if(e.key==='Enter' && !e.isComposing) submitGuess();
+});
+function submitGuess() {
+  const inp=document.getElementById('guessIn');
+  const txt=inp.value.trim();
+  if(!txt||amDrawer||gamePhase!=='playing') return;
+  inp.value='';
+  // ★ 답은 본인 화면에도 즉시 표시 안 함 — 방장 판정 후 오답이면 공개, 정답이면 "맞췄어요!"
+  if (isHost) {
+    handleMsg({ type:'guess', id:myId, text:txt });
+  } else {
+    broadcast({ type:'guess', id:myId, text:txt });
+  }
+}
+
+// ── 게임 종료 ─────────────────────────────────────────────
+function showGameEnd() {
+  document.getElementById('ovRound').classList.add('hide');
+  const sorted=[...players].sort((a,b)=>b.score-a.score);
+  const winner=sorted[0];
+  const isTie=sorted.length>1&&sorted[0].score===sorted[1].score;
+  const wi=players.findIndex(p=>p.id===winner.id);
+  document.getElementById('winnerName').textContent=isTie?'🤝 동점!':`${winner.name} 우승! ${PEMOJI[wi%5]}`;
+  document.getElementById('winnerMsg').textContent=isTie?`공동 ${winner.score}점!`:`${winner.score}점으로 우승!`;
+  const box=document.getElementById('finalScores');
+  box.innerHTML='';
+  ['🥇','🥈','🥉'].forEach((medal,i)=>{
+    if(!sorted[i]) return;
+    const pi=players.findIndex(p=>p.id===sorted[i].id);
+    const row=document.createElement('div');
+    row.style.cssText=`display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;border:1.5px solid ${i===0?'#f4a261':'rgba(26,26,46,0.12)'};background:${i===0?'#fff8ee':'var(--paper)'}`;
+    row.innerHTML=`<span style="font-size:20px">${medal}</span><span style="font-size:18px">${PEMOJI[pi%5]}</span><span style="font-size:14px;font-weight:700;flex:1">${sorted[i].name}</span><span style="font-family:'Gaegu',cursive;font-size:20px;font-weight:700;color:${PCOLOR[pi%5]}">${sorted[i].score}점</span>`;
+    box.appendChild(row);
+  });
+  confetti();
+  document.getElementById('ovEnd').classList.remove('hide');
+}
+
+// ── 캔버스 ────────────────────────────────────────────────
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let drawing=false, lx=0, ly=0, brushColor='#1a1a2e', brushSize=4, erasing=false;
+let strokeHistory = [];  // 획 기록 (undo용)
+let currentStroke = [];  // 현재 그리는 획
+
+function resize() {
+  const w = cv.parentElement.clientWidth;
+  // 높이는 CSS flex:1 이 처리 — JS는 width만 맞춰주면 됨
+  const h = cv.clientHeight || (window.innerWidth <= 650 ? 320 : window.innerHeight - 280);
+  const hasC = cv.width > 0 && cv.height > 0;
+  const img = hasC ? ctx.getImageData(0, 0, cv.width, cv.height) : null;
+  cv.width = w; cv.height = h;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+  if (img) ctx.putImageData(img, 0, 0);
+}
+window.addEventListener('resize',resize);
+setTimeout(resize,60);
+
+// ── 아이패드 키보드 대응 (visualViewport) ──────────────────
+function applyViewport() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const wrap = document.querySelector('.canvas-wrap');
+  if (!wrap) return;
+  const isTablet = window.innerWidth > 650;
+  if (isTablet) {
+    // 키보드가 올라오면 visualViewport.height 가 줄어듦
+    const available = vv.height - 46; // 헤더 높이 제외
+    wrap.style.height = available + 'px';
+  }
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', applyViewport);
+}
+
+
+
+
+// ── 색상 팔레트 ──────────────────────────────────────────
+const PALETTE_HUES = [0, 15, 30, 45, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 0, 0];
+// 0,0 자리는 흰/검정
+let currentHue = 0;
+let currentLightness = 45;
+
+function buildPalette() {
+  const grid = document.getElementById('paletteGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  // 8 hues × 2줄 = 16색 + 검정/흰색/회색 행
+  const hues = [0,20,40,60,90,120,160,200,240,270,300,330];
+  // 줄 1: 진한 버전
+  hues.forEach(h => addSwatch(grid, h, 35));
+  // 줄 2: 밝은 버전
+  hues.forEach(h => addSwatch(grid, h, 65));
+  // 줄 3: 무채색
+  [0,30,60,90,120,150,180,210].forEach((l,i) => {
+    const btn = document.createElement('button');
+    const g = Math.round(l * 2.55);
+    const hex = '#' + [g,g,g].map(v=>v.toString(16).padStart(2,'0')).join('');
+    btn.style.cssText = `width:22px;height:22px;border-radius:4px;border:1.5px solid rgba(255,255,255,0.2);background:${hex};cursor:pointer;`;
+    btn.onclick = () => applyColor(hex);
+    grid.appendChild(btn);
+  });
+}
+
+function addSwatch(grid, hue, lightness) {
+  const btn = document.createElement('button');
+  const hex = hslToHex(hue, 85, lightness);
+  btn.style.cssText = `width:22px;height:22px;border-radius:4px;border:1.5px solid rgba(255,255,255,0.15);background:${hex};cursor:pointer;transition:transform .1s;`;
+  btn.onmouseenter = () => btn.style.transform = 'scale(1.2)';
+  btn.onmouseleave = () => btn.style.transform = 'scale(1)';
+  btn.onclick = () => { currentHue = hue; currentLightness = lightness; applyColor(hex); };
+  grid.appendChild(btn);
+}
+
+function applyColor(hex) {
+  brushColor = hex;
+  erasing = false;
+  document.getElementById('eraserBtn').classList.remove('on');
+  cv.style.cursor = 'crosshair';
+  document.getElementById('colorPreviewBtn').style.background = hex;
+  // 팔레트 닫기
+  document.getElementById('colorPalette').style.display = 'none';
+}
+
+function updateLightness(val) {
+  currentLightness = parseInt(val);
+  const hex = hslToHex(currentHue, 85, currentLightness);
+  applyColor(hex);
+  document.getElementById('colorPalette').style.display = 'block'; // 닫지 않음
+}
+
+function togglePalette() {
+  const p = document.getElementById('colorPalette');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (p.style.display === 'block') buildPalette();
+}
+
+// 팔레트 외부 클릭 시 닫기
+document.addEventListener('click', e => {
+  const p = document.getElementById('colorPalette');
+  const btn = document.getElementById('colorPreviewBtn');
+  if (p && btn && !p.contains(e.target) && e.target !== btn) {
+    p.style.display = 'none';
+  }
+});
+
+function undoStroke() {
+  if (!strokeHistory.length) return;
+  strokeHistory.pop();
+  // 캔버스 전체 다시 그리기
+  clearCanvasLocal();
+  strokeHistory.forEach(stroke => stroke.forEach(seg => paintLocal(seg.x1,seg.y1,seg.x2,seg.y2,seg.color,seg.size)));
+  // 다른 플레이어에게 전체 획 동기화
+  broadcast({ type:'redrawAll', strokes: strokeHistory });
+}
+
+function setHueColor(hue) {
+  const h = parseInt(hue);
+  // 명도/채도 고정, 색조만 변경
+  brushColor = hslToHex(h, 90, 45);
+  erasing = false;
+  document.getElementById('eraserBtn').classList.remove('on');
+  cv.style.cursor = 'crosshair';
+  document.getElementById('colorPreview').style.background = brushColor;
+}
+
+function setBW(c) {
+  brushColor = c === 'black' ? '#1a1a2e' : '#ffffff';
+  erasing = false;
+  document.getElementById('eraserBtn').classList.remove('on');
+  cv.style.cursor = 'crosshair';
+  document.getElementById('colorPreview').style.background = brushColor;
+  document.getElementById('hueSlider').value = c === 'black' ? 0 : 0;
+}
+
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => { const k = (n + h / 30) % 12; const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1); return Math.round(255 * color).toString(16).padStart(2, '0'); };
+  return '#' + f(0) + f(8) + f(4);
+}
+
+function lockCanvas(lock) {
+  cv.classList.toggle('locked',lock);
+  document.getElementById('toolbar').classList.toggle('toolbar-disabled',lock);
+}
+function pos(e) {
+  const r=cv.getBoundingClientRect(),t=e.touches?e.touches[0]:e;
+  return{x:(t.clientX-r.left)*(cv.width/r.width),y:(t.clientY-r.top)*(cv.height/r.height)};
+}
+cv.addEventListener('mousedown',e=>{if(!amDrawer)return;drawing=true;const p=pos(e);lx=p.x;ly=p.y;currentStroke=[];});
+cv.addEventListener('mousemove',e=>{if(!drawing||!amDrawer)return;const p=pos(e);const seg={x1:lx,y1:ly,x2:p.x,y2:p.y,color:erasing?'#fff':brushColor,size:erasing?brushSize*3:brushSize};paintLocal(seg.x1,seg.y1,seg.x2,seg.y2,seg.color,seg.size);currentStroke.push(seg);broadcast({type:'draw',...seg});lx=p.x;ly=p.y;});
+cv.addEventListener('mouseup',()=>{if(currentStroke.length)strokeHistory.push([...currentStroke]);drawing=false;});
+cv.addEventListener('mouseleave',()=>drawing=false);
+cv.addEventListener('touchstart',e=>{e.preventDefault();if(!amDrawer)return;drawing=true;const p=pos(e);lx=p.x;ly=p.y;currentStroke=[];},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing||!amDrawer)return;const p=pos(e);const seg={x1:lx,y1:ly,x2:p.x,y2:p.y,color:erasing?'#fff':brushColor,size:erasing?brushSize*3:brushSize};paintLocal(seg.x1,seg.y1,seg.x2,seg.y2,seg.color,seg.size);currentStroke.push(seg);broadcast({type:'draw',...seg});lx=p.x;ly=p.y;},{passive:false});
+cv.addEventListener('touchend',()=>{if(currentStroke.length)strokeHistory.push([...currentStroke]);drawing=false;});
+
+function paintLocal(x1,y1,x2,y2,color,size) {
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+  ctx.strokeStyle=color||(erasing?'#fff':brushColor);
+  ctx.lineWidth=size||(erasing?brushSize*3:brushSize);
+  ctx.lineCap=ctx.lineJoin='round';ctx.stroke();
+}
+function remoteDraw(d){paintLocal(d.x1,d.y1,d.x2,d.y2,d.color,d.size);}
+function clearCanvasLocal(){ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);}
+function doClean(){strokeHistory=[];clearCanvasLocal();broadcast({type:'clearCanvas'});addMsg('캔버스를 지웠어요.','sys');}
+function setSize(s,btn){brushSize=s;document.querySelectorAll('.s-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+function toggleEraser(){erasing=!erasing;document.getElementById('eraserBtn').classList.toggle('on',erasing);cv.style.cursor=erasing?'cell':'crosshair';}
+
+
+
+function confetti(){
+  const wrap=document.getElementById('confWrap');
+  const colors=['#e63946','#f4a261','#2a9d8f','#457b9d','#e9c46a','#a8dadc'];
+  for(let i=0;i<55;i++){
+    const el=document.createElement('div');el.className='conf';
+    const sz=7+Math.random()*9;
+    el.style.cssText=`left:${Math.random()*100}vw;width:${sz}px;height:${sz}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.4+Math.random()*1.8}s;animation-delay:${Math.random()*.4}s;`;
+    wrap.appendChild(el);setTimeout(()=>el.remove(),3200);
+  }
+}
+</script>
+</body>
+</html>
