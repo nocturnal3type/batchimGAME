@@ -1,0 +1,5 @@
+{
+  "name": "batchim-game",
+  "main": "server.ts",
+  "compatibilityDate": "2023-12-22"
+}
