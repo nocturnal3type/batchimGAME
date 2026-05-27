@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -568,18 +567,22 @@ function hostAction(type) {
     players.forEach(p => { p.score=0; p.guessed=false; });
     round=1; drawerIdx=0; usedWordIdxs=[];
     broadcast({ type:'startGame' });
+    // ★ 방장은 자신도 직접 처리 (self:false 이므로)
+    handleMsg({ type:'startGame' });
   } else if (type === 'nextRound') {
     document.getElementById('ovRound').classList.add('hide');
     if (round >= 5) {
       broadcast({ type:'gameEnd' });
+      handleMsg({ type:'gameEnd' });
     } else {
       round++;
-      // ★ 모든 플레이어에게 nextRound 브로드캐스트 먼저
       broadcast({ type:'nextRound' });
+      handleMsg({ type:'nextRound' });
       startRoundHost();
     }
   } else if (type === 'resetGame') {
     broadcast({ type:'resetGame' });
+    handleMsg({ type:'resetGame' });
   }
 }
 
@@ -756,21 +759,5 @@ function toggleEraser(){erasing=!erasing;document.getElementById('eraserBtn').cl
     b.className='c-btn'+(c===brushColor?' on':'');
     b.style.background=c;
     if(c==='#ffffff') b.style.border='2px solid rgba(255,255,255,0.45)';
-    b.onclick=()=>{brushColor=c;erasing=false;document.getElementById('eraserBtn').classList.remove('on');cv.style.cursor='crosshair';document.querySelectorAll('.c-btn').forEach(x=>x.classList.remove('on'));b.classList.add('on');};
-    wrap.appendChild(b);
-  });
-})();
 
-function confetti(){
-  const wrap=document.getElementById('confWrap');
-  const colors=['#e63946','#f4a261','#2a9d8f','#457b9d','#e9c46a','#a8dadc'];
-  for(let i=0;i<55;i++){
-    const el=document.createElement('div');el.className='conf';
-    const sz=7+Math.random()*9;
-    el.style.cssText=`left:${Math.random()*100}vw;width:${sz}px;height:${sz}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.4+Math.random()*1.8}s;animation-delay:${Math.random()*.4}s;`;
-    wrap.appendChild(el);setTimeout(()=>el.remove(),3200);
-  }
-}
-</script>
-</body>
-</html>
+                        
