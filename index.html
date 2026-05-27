@@ -1,10 +1,11 @@
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>그림쟁이 🎨</title>
 <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root {
     --ink:#1a1a2e; --paper:#faf7f0; --accent:#e63946;
@@ -255,7 +256,7 @@
 const SUPABASE_URL = 'https://thkpumuajtwdtixietlh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_3GSnfFxaX_rsB1Dc8Wb3NQ_bYhO9jaW'
 
-const { createClient } = supabase;
+const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── 상수 ──────────────────────────────────────────────────
@@ -759,5 +760,21 @@ function toggleEraser(){erasing=!erasing;document.getElementById('eraserBtn').cl
     b.className='c-btn'+(c===brushColor?' on':'');
     b.style.background=c;
     if(c==='#ffffff') b.style.border='2px solid rgba(255,255,255,0.45)';
+    b.onclick=()=>{brushColor=c;erasing=false;document.getElementById('eraserBtn').classList.remove('on');cv.style.cursor='crosshair';document.querySelectorAll('.c-btn').forEach(x=>x.classList.remove('on'));b.classList.add('on');};
+    wrap.appendChild(b);
+  });
+})();
 
-                        
+function confetti(){
+  const wrap=document.getElementById('confWrap');
+  const colors=['#e63946','#f4a261','#2a9d8f','#457b9d','#e9c46a','#a8dadc'];
+  for(let i=0;i<55;i++){
+    const el=document.createElement('div');el.className='conf';
+    const sz=7+Math.random()*9;
+    el.style.cssText=`left:${Math.random()*100}vw;width:${sz}px;height:${sz}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.4+Math.random()*1.8}s;animation-delay:${Math.random()*.4}s;`;
+    wrap.appendChild(el);setTimeout(()=>el.remove(),3200);
+  }
+}
+</script>
+</body>
+</html>
