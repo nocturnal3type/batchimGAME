@@ -310,7 +310,13 @@ function connectChannel(code) {
       if (status === 'SUBSCRIBED') {
         document.getElementById('headerRoom').style.display = '';
         document.getElementById('headerRoomCode').textContent = roomCode;
-        // 입장 알림
+        // ★ 자기 자신을 먼저 플레이어 목록에 추가 (self:false라 broadcast로 못 받으므로)
+        if (!players.find(p => p.id === myId)) {
+          players.push({ id: myId, name: myName, score: 0, guessed: false, isDrawer: false });
+        }
+        buildPlayers();
+        updateWaitingRoom();
+        // 다른 사람들에게 입장 알림
         broadcast({ type: 'join', id: myId, name: myName });
       }
     });
